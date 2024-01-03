@@ -1,35 +1,37 @@
 ﻿var scanners = ParseScanners(File.ReadAllLines("input.txt")).ToList();
 
-var aggregate = scanners[0];
-var toProcess = new Queue<Scanner>(scanners.Skip(1));
+var ocean = new OceanView(scanners[0]);
+var scannersToProcess = new Queue<Scanner>(scanners.Skip(1));
 
-while (toProcess.Count > 0)
+while (scannersToProcess.Count > 0)
 {
-	var scanner = toProcess.Dequeue();
-	if (!AddScanner(aggregate, scanner))
+	var scanner = scannersToProcess.Dequeue();
+	if (!ExpandWorld(ocean, scanner))
 	{
-		toProcess.Enqueue(scanner);
+		scannersToProcess.Enqueue(scanner);
 	}
 }
 
-Console.WriteLine("1: " + aggregate.Vectors.Count);
+Console.WriteLine("1: " + ocean.GetBeaconCount());
+Console.WriteLine("2: " + ocean.GetMaxDistBetweenScanners());
 
-static bool AddScanner(Scanner scanner, Scanner other)
+static bool ExpandWorld(OceanView ocean, Scanner scanner)
 {
-	foreach (var point in scanner.Vectors)
+	foreach (var oceanBeaconView in ocean.BeaconViews)
 	{
-		var lengths = point.Value.Select(x => x.Length);
+		var oceanBeaconLengthRelation = oceanBeaconView.Value.Select(x => x.Length);
 
-		foreach (var otherPoint in other.Vectors)
+		foreach (var scannerBeaconView in scanner.BeaconViews)
 		{
-			var common = otherPoint.Value.IntersectBy(lengths, x => x.Length).ToList();
+			var commonRelations = scannerBeaconView.Value.IntersectBy(oceanBeaconLengthRelation, x => x.Length).ToList();
 
-			if (common.Count > 9)
+			if (commonRelations.Count > 9)
 			{
-				var dest = point.Value.First(v => v.Length == common[0].Length);
-				var source = common[0];
+				var dest = oceanBeaconView.Value.First(v => v.Length == commonRelations[0].Length);
+				var source = commonRelations[0];
 				var translation = GetTranslationFunction(dest, source);
-				scanner.AddPoints(point.Key, otherPoint.Value.Select(translation).ToList());
+				ocean.AddBeaconsRelativeTo(oceanBeaconView.Key, scannerBeaconView.Value.Select(translation).ToList());
+				ocean.AddScannerRelativeTo(oceanBeaconView.Key, scanner.id, translation(-new Vector(scannerBeaconView.Key)));
 				return true;
 			}
 		}
